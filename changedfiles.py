@@ -44,6 +44,9 @@ def current_commit_hash():
     "Returns the commit-hash for HEAD"
     return run_git(["rev-parse", "HEAD"])
 
+def is_valid_commit_hash(commit):
+    return run_git(["cat-file", "-t", commit]) == "commit"
+
 def git_toplevel():
     return run_git(["rev-parse", "--show-toplevel"])
 
@@ -77,6 +80,17 @@ def popdir():
     if len(dirstack) > 0:
         os.chdir(dirstack.pop())
 
+def clone_and_sync_current_dir(status):
+    if has_uncommitted_changes():
+        raise Exception("uncommitted changes in {}, aborting".format(os.path.abspath(".")))
+    commit = status["commit"]
+    if not is_valid_commit_hash(commit):
+        raise Exception("unknown commit-hash {}, aborting".format(commit))
+    files = [f for f in get_changed_files(commit) if (f != ".gitignore" and f != "README.md")]
+    print(files)
+    return get_status_string()
+
+
 def clone_and_sync(status):
     with tempfile.TemporaryDirectory() as temp_dir:
         #print("Temporary directory:", temp_dir)
@@ -89,9 +103,7 @@ def clone_and_sync(status):
             os.chdir(ls[0])
             #print("current directory:", os.path.abspath("."))
             #print("upload these files:")
-            files = [f for f in get_changed_files(status["commit"]) if (f != ".gitignore" and f != "README.md")]
-            print(files)
-            return get_status_string()
+            clone_and_sync_current_dir(status)
         finally:
             popdir()
 
@@ -109,3 +121,4 @@ if 1==2:
     status = {"commit": "28e96518240e9ba25b7f6209aa1199388a352d53",
               "origin": "https://github.com/rolfrander/geo.git"}
     clone_and_sync(status)
+    clone_and_sync_current_dir(status)
