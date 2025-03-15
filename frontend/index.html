@@ -4,21 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web CLI</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
-
+    <link rel="stylesheet" href="/js/jquery.terminal/css/jquery.terminal.min.css">
+    <script src="/js/jquery/dist/jquery.min.js"></script>
+    <script src="/js/jquery.terminal/js/jquery.terminal.min.js"></script>
+<style type="text/css">
+.terminal, .cmd {
+    background: black;
+    color: #0f0;
+}
+.terminal .inverted, .cmd .inverted, .cmd .cursor.blink {
+    background-color: #0f0;
+    color: black;
+}
+.terminal, .cmd, .terminal .terminal-output div div, .cmd .prompt {
+    --size: 1.6;
+}
+#terminal {
+    height: 2 em;
+    margin: 0 5px 0 5px;
+    --color: rgba(0, 200, 0, 0.99);
+    --animation: terminal-glow;
+    text-shadow: 0 0 3px rgba(0, 200, 0, 0.6);
+}
+.terminal .terminal-output > :not(.raw) .error,
+.terminal .terminal-output > :not(.raw) .error * {
+    text-shadow: 0 0 3px rgba(200, 0, 0, 0.6);
+}
+.terminal .terminal-output > :not(.raw) a[href] {
+    text-shadow: 0 0 3px rgba(15, 96, 255, 0.6);
+}
+</style>
 </head>
 <body>
-    <div id="terminal-container"></div>
+    <h1>Terminal</h1>
+    <div id="terminal"></div>
     <script defer src="terminal.js"></script>
     <table id="debug-output">
-        <tr><td>cursorPos</td><td id="cursorPos"></td></tr>
-        <tr><td>text</td><td id="text"></td></tr>
-        <tr><td>line</td><td id="line"></td></tr>
-        <tr><td>begidx</td><td id="begidx"></td></tr>
-        <tr><td>endidx</td><td id="endidx"></td></tr>
-        <tr><td>debug</td><td id="debug"></td></tr>
+        <tr><td>error message</td><td id="error_message"></td></tr>
+        <tr><td>error_data</td><td id="error_data"></td></tr>
+        <tr><td>result</td><td id="result"></td></tr>
     </table>
 </body>
 </html>

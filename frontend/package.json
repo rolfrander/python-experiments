@@ -1,5 +1,5 @@
 {
   "dependencies": {
-    "@xterm/xterm": "^5.5.0"
+    "jquery.terminal": "^2.44.1"
   }
 }

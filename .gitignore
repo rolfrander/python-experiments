@@ -1,1 +1,4 @@
 frontend/node_modules
+.clj-kondo/
+.lsp/
+backend/_scratch.py
