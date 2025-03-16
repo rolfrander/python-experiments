@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "bootstrap": "^5.3.3",
     "jquery.terminal": "^2.44.1"
   }
 }

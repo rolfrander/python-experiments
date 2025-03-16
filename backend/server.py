@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from typing import Any, Callable, Dict, Optional, Union, List
 from pydantic import BaseModel
 import inspect
+from pathlib import Path
 
 class JSONRPCRequest(BaseModel):
     jsonrpc: str = "2.0"
@@ -64,123 +65,41 @@ class JSONRPCHandler:
                 "id": "5254ca32-01a8-11f0-b983-e0d4e8770aeb",
                 "procs": procs}
 
+    def completedefault(self, text, line, begidx, endidx):
+        return []
+
+    def system_completions(self, text, line, begidx, endidx):
+        if begidx == 0:
+            return [x for x in self.methods.keys() if x.startswith(text)]
+        else:
+            cmd = line.split(maxsplit=1)[0]
+            complete_fn = getattr(self, "complete_"+cmd)
+            print("complete '{}': {}".format(cmd, complete_fn))
+            if callable(complete_fn):
+                return complete_fn(text, line, begidx, endidx)
+            else:
+                return self.completedefault(text, line, begidx, endidx)
+
     def process_request(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Processes a JSON-RPC request and returns a JSON-RPC response."""
-        if request.jsonrpc != "2.0" or not isinstance(request.method, str):
-            return JSONRPCResponse(id=request.id, error=JSONRPCError(code=-32600, message="Invalid Request"))
-
-        if request.method == "system.describe":
-            return self.system_describe()
-        
-        if request.method not in self.methods:
-            return JSONRPCResponse(id=request.id, error=JSONRPCError(code=-32601, message="Method not found: {}".format(request.method)))
-
         try:
+            if request.jsonrpc != "2.0" or not isinstance(request.method, str):
+                return JSONRPCResponse(id=request.id, error=JSONRPCError(code=-32600, message="Invalid Request"))
+
+            if request.method == "system.describe":
+                return JSONRPCResponse(id=request.id, result=self.system_describe())
+            
+            if request.method == "system.completions":
+                return JSONRPCResponse(id=request.id, result=self.system_completions(*request.params))
+
+            if request.method not in self.methods:
+                return JSONRPCResponse(id=request.id, error=JSONRPCError(code=-32601, message="Method not found: {}".format(request.method)))
+
             result = self.methods[request.method](*request.params)
+
             return JSONRPCResponse(id=request.id, result=result)
         except Exception as e:
             return JSONRPCResponse(id=request.id, error=JSONRPCError(code=-32603, message="Internal error", data=str(e)))
-
-
-COMMANDS = ["ls", "cd", "pwd", "mkdir", "rm", "cp", "mv", "touch", "cat", "echo", "exit", "clear"]
-
-PARAMS = ["alcohol",
-"arrival",
-"article",
-"audience",
-"bath",
-"birthday",
-"camera",
-"cell",
-"city",
-"classroom",
-"clothes",
-"college",
-"committee",
-"communication",
-"complaint",
-"control",
-"conversation",
-"courage",
-"data",
-"dealer",
-"decision",
-"department",
-"description",
-"difficulty",
-"direction",
-"dirt",
-"discussion",
-"disk",
-"distribution",
-"drama",
-"establishment",
-"event",
-"examination",
-"expression",
-"family",
-"flight",
-"goal",
-"government",
-"grocery",
-"growth",
-"hair",
-"health",
-"highway",
-"imagination",
-"importance",
-"injury",
-"inspection",
-"leader",
-"library",
-"magazine",
-"management",
-"manufacturer",
-"meaning",
-"member",
-"mixture",
-"mood",
-"mud",
-"nature",
-"night",
-"people",
-"perception",
-"person",
-"policy",
-"possession",
-"possibility",
-"potato",
-"power",
-"presentation",
-"quality",
-"relation",
-"resource",
-"sample",
-"satisfaction",
-"series",
-"setting",
-"signature",
-"situation",
-"skill",
-"skill",
-"software",
-"song",
-"stranger",
-"student",
-"success",
-"supermarket",
-"sympathy",
-"tale",
-"teacher",
-"temperature",
-"theory",
-"topic",
-"tradition",
-"transportation",
-"vehicle",
-"virus",
-"week",
-"world"]
 
 app = FastAPI()
 
@@ -193,6 +112,14 @@ class Cmd(JSONRPCHandler):
     def sub(self, x: int, y: int):
         return x-y
 
+    def complete_cat(self, text, line, begidx, endidx):
+        return [f.name for f in Path(".").iterdir() if f.is_file() and f.name.startswith(text)]
+
+    @rpc_method()
+    def cat(self, args):
+        with open(args, "r") as input:
+            return input.readlines()
+
 cmd = Cmd()
 
 @app.websocket("/ws")
@@ -200,9 +127,10 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     while True:
         json = await websocket.receive_json()
-        rpcrequest = JSONRPCRequest.model_validate_json(json)
+        rpcrequest = JSONRPCRequest.model_validate(json)
+        print("process {}".format(rpcrequest))
         ret = cmd.process_request(rpcrequest)
-        await websocket.send_json(ret)
+        await websocket.send_text(ret.model_dump_json())
 
 @app.post("/rpc")
 async def handle_rpc(request: JSONRPCRequest):
